@@ -91,12 +91,16 @@ export default function CalendarPage() {
 
   // 캘린더 그리드 생성
   const renderCalendarCells = () => {
-    //monthStart : 현재 날짜를 기준으로 해당월의 첫번째 날을 계산한 결과
-    //monthEnd : 현재 날짜를 기준으로 해당월의 마지막 날을 계산
-    // Start : 월의 시작 날짜를 기준으로 해당 주의 첫번째 날 (주 시작일)을 계산
-    // -> monthStart가 2023 10월 1일이라 가정해보면
-    //    startDate도 동일하게 2023 10월 1일로 설정
-    //    만약 주 시작일이 월요일로 설정 되어 있다면 그 이전주 월요일이 될 수 있음
+    // monthStart : 현재 날짜를 기준으로 해당 월의 첫번째 날을 계산한 결과
+    // monthEnd : 월의 시작날짜를 기준으로 해당월의 마지막 날을 계산.
+    // start : 월의 시작날짜를 기준으로 해당주의 첫번째날(주 시작일)을 계산
+    //  -> monthStart가 2023년 10월 1일이라 가정해보면
+    //     startDate도 동일하게 2023년 10월 1일로 설정.
+    //     만약 주 시작일이 월요일로 설정되어 있다면 그 이전주 월요일이 될수 있음(2023/9/25)
+
+    // end : 월의 마지막 날짜를 기준으로 해당주의 마지막날(주 종료일)을 계산
+    //  -> monthend가 2023년 10월 31일 이라면 endDate는 그 주의 마지막인 11월 4일이됨.
+    //     주 종료일이 일요일로 설정되어있으면 2023/11/5일로 설정
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
     const startDate = startOfWeek(monthStart);
@@ -107,11 +111,16 @@ export default function CalendarPage() {
     let day = startDate;
 
     while (day <= endDate) {
+      // enddate까지 반복하는 반복.
       for (let i = 0; i < 7; i++) {
+        // 한 주를 생성하기 위한 반복문
         // 해당 날짜의 이벤트 찾기 (선택된 카테고리만)
+        // 이벤트(일정이 있는 날짜들을 조회.)
         const dayEvents = events.filter(
           (event) =>
             isSameDay(day, event.start) &&
+            // 선택된 카테고리가 없거나 현재 이벤트의 카테고리가 선택된 카테고리에 속해있으면
+            // 이벤트 필터링을 처리함.
             (selectedCategories.length === 0 ||
               selectedCategories.includes(event.category))
         );

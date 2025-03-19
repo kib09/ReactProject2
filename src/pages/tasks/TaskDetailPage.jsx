@@ -1,176 +1,119 @@
-// src/pages/tasks/TaskDetailPage.jsx
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "../../firebase";
-import { useAuth } from "../../context/AuthContext";
+import { useParams, useNavigate, Link } from "react-router-dom";
 
-export default function TaskDetailPage() {
+export default function NoticeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
 
-  const [task, setTask] = useState(null);
+  const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    dueDate: "",
-    priority: "medium",
-    status: "todo",
-  });
 
+  // 임시 데이터 로드 (나중에 Firebase로 대체)
   useEffect(() => {
-    const fetchTask = async () => {
-      try {
-        setLoading(true);
+    setLoading(true);
+    setError(null);
 
-        const taskDoc = await getDoc(doc(db, "tasks", id));
+    // 데이터 로딩 시뮬레이션
+    setTimeout(() => {
+      // 임시 데이터
+      const dummyNotices = {
+        1: {
+          id: "1",
+          title: "2023년 4분기 회사 목표 안내",
+          content: `안녕하세요, 경영지원팀입니다.
 
-        if (!taskDoc.exists()) {
-          setError("작업을 찾을 수 없습니다.");
-          setLoading(false);
-          return;
-        }
+2023년 4분기 회사 목표를 다음과 같이 안내드립니다.
 
-        const taskData = taskDoc.data();
+1. 매출 목표: 전년 동기 대비 15% 성장
+2. 신규 고객 유치: 20개 업체 이상
+3. 고객 만족도: 90점 이상 유지
+4. 신규 서비스 출시: 12월 중 베타 버전 오픈
 
-        // 현재 사용자가 이 작업에 접근할 권한이 있는지 확인
-        if (
-          taskData.assignedTo !== currentUser.uid &&
-          taskData.createdBy !== currentUser.uid
-        ) {
-          setError("이 작업에 접근할 권한이 없습니다.");
-          setLoading(false);
-          return;
-        }
+각 팀별 세부 목표는 팀장을 통해 전달될 예정입니다.
+모두 화이팅!`,
+          author: "김경영",
+          department: "경영지원팀",
+          createdAt: "2023-10-15",
+          updatedAt: null,
+          isImportant: true,
+          viewCount: 129,
+          attachments: [
+            { id: "a1", name: "4분기_회사목표.pdf", size: "2.4MB" },
+            { id: "a2", name: "팀별_세부목표.xlsx", size: "1.1MB" },
+          ],
+        },
+        2: {
+          id: "2",
+          title: "신규 프로젝트 킥오프 미팅 일정 공지",
+          content: `개발팀 전체 인원 참석 바랍니다.
 
-        const formattedTask = {
-          id: taskDoc.id,
-          ...taskData,
-          dueDate: taskData.dueDate?.toDate() || null,
-          createdAt: taskData.createdAt?.toDate() || null,
-          updatedAt: taskData.updatedAt?.toDate() || null,
-        };
+일시: 2023년 10월 20일 오후 2시
+장소: 대회의실
+안건: 신규 프로젝트 범위 및 일정 논의
 
-        setTask(formattedTask);
-        setFormData({
-          title: formattedTask.title || "",
-          description: formattedTask.description || "",
-          dueDate: formattedTask.dueDate
-            ? new Date(formattedTask.dueDate).toISOString().split("T")[0]
-            : "",
-          priority: formattedTask.priority || "medium",
-          status: formattedTask.status || "todo",
-        });
-      } catch (err) {
-        console.error("작업 상세 로드 오류:", err);
-        setError("작업 상세를 불러오는 데 실패했습니다.");
-      } finally {
+사전에 기획안을 검토해주시기 바랍니다.`,
+          author: "박개발",
+          department: "개발팀",
+          createdAt: "2023-10-12",
+          updatedAt: null,
+          isImportant: false,
+          viewCount: 96,
+          attachments: [
+            { id: "a3", name: "프로젝트_기획안.pdf", size: "3.7MB" },
+          ],
+        },
+        3: {
+          id: "3",
+          title: "사내 네트워크 점검 안내 (10/20)",
+          content: `안녕하세요, IT인프라팀입니다.
+
+원활한 업무 환경 제공을 위한 네트워크 점검이 있을 예정입니다.
+
+일시: 2023년 10월 20일 오전 7시 ~ 9시
+영향: 해당 시간 동안 인터넷 및 사내 시스템 접속 불가
+
+긴급 작업이 필요한 경우 사전에 IT인프라팀으로 연락 바랍니다.
+불편을 드려 죄송합니다.`,
+          author: "이인프라",
+          department: "IT인프라팀",
+          createdAt: "2023-10-10",
+          updatedAt: "2023-10-11",
+          isImportant: true,
+          viewCount: 113,
+          attachments: [],
+        },
+      };
+
+      if (dummyNotices[id]) {
+        setNotice(dummyNotices[id]);
+        setLoading(false);
+      } else {
+        setError("공지사항을 찾을 수 없습니다.");
         setLoading(false);
       }
-    };
+    }, 800);
+  }, [id]);
 
-    if (id && currentUser) {
-      fetchTask();
-    }
-  }, [id, currentUser]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      const taskRef = doc(db, "tasks", id);
-
-      // dueDate를 Date 객체로 변환
-      const dueDate = formData.dueDate ? new Date(formData.dueDate) : null;
-
-      await updateDoc(taskRef, {
-        title: formData.title,
-        description: formData.description,
-        dueDate: dueDate,
-        priority: formData.priority,
-        status: formData.status,
-        updatedAt: serverTimestamp(),
-      });
-
-      // 작업 데이터 갱신
-      const updatedTaskDoc = await getDoc(taskRef);
-      const updatedTaskData = updatedTaskDoc.data();
-
-      setTask({
-        id: updatedTaskDoc.id,
-        ...updatedTaskData,
-        dueDate: updatedTaskData.dueDate?.toDate() || null,
-        createdAt: updatedTaskData.createdAt?.toDate() || null,
-        updatedAt: new Date(), // 서버 타임스탬프가 바로 반영되지 않으므로 현재 시간 사용
-      });
-
-      setIsEditing(false);
-    } catch (err) {
-      console.error("작업 업데이트 오류:", err);
-      setError("작업을 업데이트하는 데 실패했습니다.");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm("이 작업을 삭제하시겠습니까?")) {
-      return;
-    }
-
-    try {
-      await deleteDoc(doc(db, "tasks", id));
-      navigate("/tasks");
-    } catch (err) {
-      console.error("작업 삭제 오류:", err);
-      setError("작업을 삭제하는 데 실패했습니다.");
-    }
-  };
-
-  const handleStatusChange = async (newStatus) => {
-    try {
-      const taskRef = doc(db, "tasks", id);
-
-      await updateDoc(taskRef, {
-        status: newStatus,
-        updatedAt: serverTimestamp(),
-      });
-
-      // 상태만 업데이트
-      setTask((prev) => ({
-        ...prev,
-        status: newStatus,
-        updatedAt: new Date(),
-      }));
-
-      setFormData((prev) => ({
-        ...prev,
-        status: newStatus,
-      }));
-    } catch (err) {
-      console.error("작업 상태 업데이트 오류:", err);
-      setError("작업 상태를 업데이트하는 데 실패했습니다.");
+  // 삭제 핸들러 (나중에 Firebase 연동)
+  const handleDelete = () => {
+    if (window.confirm("이 공지사항을 삭제하시겠습니까?")) {
+      // 삭제 로직 구현 예정
+      alert("공지사항이 삭제되었습니다.");
+      navigate("/notice");
     }
   };
 
   if (loading) {
     return (
-      <div className="max-w-3xl px-4 py-8 mx-auto">
-        <div className="flex justify-center py-12">
-          <div className="w-12 h-12 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin"></div>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-8"></div>
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
         </div>
       </div>
     );
@@ -178,268 +121,110 @@ export default function TaskDetailPage() {
 
   if (error) {
     return (
-      <div className="max-w-3xl px-4 py-8 mx-auto">
-        <div className="p-4 rounded-md bg-red-50">
-          <p className="text-red-700">{error}</p>
-          <button
-            onClick={() => navigate("/tasks")}
-            className="mt-4 text-indigo-600 hover:text-indigo-800"
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-semibold text-gray-800">
+            오류가 발생했습니다
+          </h2>
+          <p className="mt-2 text-gray-600">{error}</p>
+          <Link
+            to="/notice"
+            className="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
           >
-            작업 목록으로 돌아가기
-          </button>
+            공지사항 목록으로
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl px-4 py-8 mx-auto">
-      <div className="overflow-hidden bg-white rounded-lg shadow-md">
-        {isEditing ? (
-          // 편집 폼
-          <form onSubmit={handleSubmit} className="p-6">
-            <h1 className="mb-6 text-2xl font-bold text-gray-900">작업 편집</h1>
-
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  제목
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  id="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  required
-                  className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="description"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  설명
-                </label>
-                <textarea
-                  name="description"
-                  id="description"
-                  rows="3"
-                  value={formData.description}
-                  onChange={handleChange}
-                  className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                ></textarea>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="dueDate"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  마감일
-                </label>
-                <input
-                  type="date"
-                  name="dueDate"
-                  id="dueDate"
-                  value={formData.dueDate}
-                  onChange={handleChange}
-                  className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="priority"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  우선순위
-                </label>
-                <select
-                  name="priority"
-                  id="priority"
-                  value={formData.priority}
-                  onChange={handleChange}
-                  className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="low">낮음</option>
-                  <option value="medium">중간</option>
-                  <option value="high">높음</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="status"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  상태
-                </label>
-                <select
-                  name="status"
-                  id="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="todo">예정됨</option>
-                  <option value="in-progress">진행 중</option>
-                  <option value="completed">완료됨</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-6 space-x-3">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                취소
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                저장
-              </button>
-            </div>
-          </form>
-        ) : (
-          // 상세 보기
-          <div>
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-start justify-between">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {task?.title}
-                </h1>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
-                  >
-                    편집
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    className="px-3 py-1 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mt-4">
-                <span
-                  className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    task?.priority === "high"
-                      ? "bg-red-100 text-red-800"
-                      : task?.priority === "medium"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-green-100 text-green-800"
-                  }`}
-                >
-                  {task?.priority === "high"
-                    ? "높음"
-                    : task?.priority === "medium"
-                    ? "중간"
-                    : "낮음"}
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      {notice && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              {notice.isImportant && (
+                <span className="px-2.5 py-0.5 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                  중요
                 </span>
-                <span
-                  className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    task?.status === "completed"
-                      ? "bg-green-100 text-green-800"
-                      : task?.status === "in-progress"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {task?.status === "completed"
-                    ? "완료됨"
-                    : task?.status === "in-progress"
-                    ? "진행 중"
-                    : "예정됨"}
-                </span>
-                {task?.dueDate && (
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold leading-5 text-gray-800 bg-gray-100 rounded-full">
-                    마감일: {new Date(task.dueDate).toLocaleDateString()}
-                  </span>
-                )}
-              </div>
+              )}
+              <h1 className="text-2xl font-bold text-gray-900">
+                {notice.title}
+              </h1>
             </div>
 
-            <div className="p-6">
-              <h2 className="mb-2 text-lg font-medium text-gray-900">설명</h2>
-              <p className="text-gray-700 whitespace-pre-line">
-                {task?.description || "설명이 없습니다."}
+            <div className="flex items-center text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100">
+              <span>{notice.department}</span>
+              <span className="mx-1">•</span>
+              <span>{notice.author}</span>
+              <span className="mx-1">•</span>
+              <span>{notice.createdAt}</span>
+              {notice.updatedAt && (
+                <>
+                  <span className="mx-1">•</span>
+                  <span>수정됨: {notice.updatedAt}</span>
+                </>
+              )}
+              <span className="mx-1">•</span>
+              <span>조회 {notice.viewCount}</span>
+            </div>
+
+            {/* 공지사항 내용 */}
+            <div className="prose max-w-none mb-6">
+              <p className="whitespace-pre-line text-gray-800">
+                {notice.content}
               </p>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <h2 className="mb-3 text-sm font-medium text-gray-700">
-                상태 변경
-              </h2>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleStatusChange("todo")}
-                  disabled={task?.status === "todo"}
-                  className={`px-3 py-1 text-xs font-medium rounded-md ${
-                    task?.status === "todo"
-                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  예정됨
-                </button>
-                <button
-                  onClick={() => handleStatusChange("in-progress")}
-                  disabled={task?.status === "in-progress"}
-                  className={`px-3 py-1 text-xs font-medium rounded-md ${
-                    task?.status === "in-progress"
-                      ? "bg-blue-100 text-blue-500 cursor-not-allowed"
-                      : "bg-blue-200 text-blue-700 hover:bg-blue-300"
-                  }`}
-                >
-                  진행 중
-                </button>
-                <button
-                  onClick={() => handleStatusChange("completed")}
-                  disabled={task?.status === "completed"}
-                  className={`px-3 py-1 text-xs font-medium rounded-md ${
-                    task?.status === "completed"
-                      ? "bg-green-100 text-green-500 cursor-not-allowed"
-                      : "bg-green-200 text-green-700 hover:bg-green-300"
-                  }`}
-                >
-                  완료
-                </button>
+            {/* 첨부 파일 */}
+            {notice.attachments && notice.attachments.length > 0 && (
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  첨부 파일
+                </h3>
+                <div className="space-y-2">
+                  {notice.attachments.map((file) => (
+                    <a
+                      key={file.id}
+                      href="#"
+                      className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <span className="text-gray-500">📎</span>
+                      <span className="text-sm text-gray-700">{file.name}</span>
+                      <span className="text-xs text-gray-500 ml-auto">
+                        {file.size}
+                      </span>
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+          </div>
 
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <div className="flex justify-between text-xs text-gray-500">
-                <div>
-                  {task?.createdAt && (
-                    <p>생성: {new Date(task.createdAt).toLocaleString()}</p>
-                  )}
-                </div>
-                <div>
-                  {task?.updatedAt && (
-                    <p>
-                      마지막 수정: {new Date(task.updatedAt).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              </div>
+          {/* 하단 액션 버튼 */}
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+            <Link to="/notice" className="text-gray-600 hover:text-gray-900">
+              목록으로
+            </Link>
+
+            <div className="flex gap-2">
+              <Link
+                to={`/notice/edit/${notice.id}`}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                수정
+              </Link>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+              >
+                삭제
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

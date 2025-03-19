@@ -1,191 +1,218 @@
-// src/pages/tasks/TaskFormPage.jsx
+// src/pages/notice/NoticeCreatePage.jsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../firebase";
-import { useAuth } from "../../context/AuthContext";
+import { useNavigate, Link } from "react-router-dom";
 
-export default function TaskFormPage() {
-  const { currentUser } = useAuth();
+export default function NoticeCreatePage() {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    dueDate: "",
-    priority: "medium",
-    status: "todo",
-  });
-
-  const [loading, setLoading] = useState(false);
+  // 폼 상태 관리
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [isImportant, setIsImportant] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  // 파일 업로드 핸들러
+  const handleFileChange = (e) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setFiles([...files, ...newFiles]);
+    }
   };
 
+  // 파일 제거 핸들러
+  const handleRemoveFile = (fileToRemove) => {
+    setFiles(files.filter((file) => file !== fileToRemove));
+  };
+
+  // 폼 제출 핸들러
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!currentUser) {
-      setError("로그인이 필요합니다.");
+    // 유효성 검사
+    if (!title.trim()) {
+      setError("제목을 입력해주세요.");
       return;
     }
 
+    if (!content.trim()) {
+      setError("내용을 입력해주세요.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-
-      // dueDate를 Date 객체로 변환
-      const dueDate = formData.dueDate ? new Date(formData.dueDate) : null;
-
-      const taskData = {
-        title: formData.title,
-        description: formData.description,
-        dueDate: dueDate,
-        priority: formData.priority,
-        status: formData.status,
-        assignedTo: currentUser.uid,
-        createdBy: currentUser.uid,
-        creatorName: currentUser.displayName || currentUser.email,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      const docRef = await addDoc(collection(db, "tasks"), taskData);
-
-      navigate(`/tasks/${docRef.id}`);
+      // 나중에 Firebase 연동 예정
+      // 현재는 성공 시뮬레이션
+      setTimeout(() => {
+        alert("공지사항이 등록되었습니다.");
+        navigate("/notice");
+      }, 1000);
     } catch (err) {
-      console.error("작업 생성 오류:", err);
-      setError("작업을 생성하는 데 실패했습니다.");
-    } finally {
-      setLoading(false);
+      setError("공지사항 등록 중 오류가 발생했습니다. 다시 시도해주세요.");
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="max-w-3xl px-4 py-8 mx-auto">
-      <div className="overflow-hidden bg-white rounded-lg shadow-md">
-        <form onSubmit={handleSubmit} className="p-6">
-          <h1 className="mb-6 text-2xl font-bold text-gray-900">
-            새 작업 생성
-          </h1>
+  // 파일 크기 포맷팅
+  // 파일크기를 최대 메가바이트 단위까지 변환하여 사용자 친화적인 방식으로
+  // 용량을 표현.
+  // 현업에서는 was에 무리를 주지 않기위해 용량제한을 두는경우도 많음.
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + " B";
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    else return (bytes / 1048576).toFixed(1) + " MB";
+  };
 
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h1 className="text-xl font-semibold text-gray-800">공지사항 작성</h1>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6">
           {error && (
-            <div className="p-4 mb-4 rounded-md bg-red-50">
-              <p className="text-red-700">{error}</p>
+            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
+              <p>{error}</p>
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* 제목 입력 */}
             <div>
               <label
                 htmlFor="title"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
                 제목 <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                name="title"
                 id="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                placeholder="제목을 입력하세요"
               />
             </div>
 
+            {/* 중요 공지 체크박스 */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isImportant"
+                checked={isImportant}
+                onChange={(e) => setIsImportant(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+              <label
+                htmlFor="isImportant"
+                className="ml-2 text-sm text-gray-700"
+              >
+                중요 공지사항으로 등록
+              </label>
+            </div>
+
+            {/* 내용 입력 */}
             <div>
               <label
-                htmlFor="description"
-                className="block text-sm font-medium text-gray-700"
+                htmlFor="content"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
-                설명
+                내용 <span className="text-red-500">*</span>
               </label>
               <textarea
-                name="description"
-                id="description"
-                rows="3"
-                value={formData.description}
-                onChange={handleChange}
-                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                id="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
+                placeholder="내용을 입력하세요"
+                rows="12"
               ></textarea>
             </div>
 
+            {/* 파일 첨부 */}
             <div>
-              <label
-                htmlFor="dueDate"
-                className="block text-sm font-medium text-gray-700"
-              >
-                마감일
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                첨부 파일
               </label>
-              <input
-                type="date"
-                name="dueDate"
-                id="dueDate"
-                value={formData.dueDate}
-                onChange={handleChange}
-                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
 
-            <div>
-              <label
-                htmlFor="priority"
-                className="block text-sm font-medium text-gray-700"
-              >
-                우선순위
-              </label>
-              <select
-                name="priority"
-                id="priority"
-                value={formData.priority}
-                onChange={handleChange}
-                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="low">낮음</option>
-                <option value="medium">중간</option>
-                <option value="high">높음</option>
-              </select>
-            </div>
+              {files.length > 0 && (
+                <div className="mb-3 space-y-2">
+                  {files.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">📎</span>
+                        <span className="text-sm text-gray-700">
+                          {file.name}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          ({formatFileSize(file.size)})
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(file)}
+                        className="text-gray-500 hover:text-red-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            <div>
-              <label
-                htmlFor="status"
-                className="block text-sm font-medium text-gray-700"
-              >
-                상태
-              </label>
-              <select
-                name="status"
-                id="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="todo">예정됨</option>
-                <option value="in-progress">진행 중</option>
-                <option value="completed">완료됨</option>
-              </select>
+              <div className="flex items-center justify-center w-full">
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <p className="mb-2 text-sm text-gray-500">
+                      <span className="font-semibold">클릭</span>하여 파일 첨부
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      PNG, JPG, PDF, DOCX (최대 10MB)
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    multiple
+                    onChange={handleFileChange}
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end mt-6 space-x-3">
-            <button
-              type="button"
-              onClick={() => navigate("/tasks")}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          {/* 버튼 영역 */}
+          <div className="mt-8 flex justify-end gap-3">
+            <Link
+              to="/notice"
+              className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               취소
-            </button>
+            </Link>
             <button
               type="submit"
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isSubmitting}
+              className={`px-5 py-2.5 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors ${
+                isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+              }`}
             >
-              {loading ? "생성 중..." : "생성"}
+              {isSubmitting ? (
+                <div className="flex items-center">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  저장 중...
+                </div>
+              ) : (
+                "등록하기"
+              )}
             </button>
           </div>
         </form>

@@ -1,7 +1,7 @@
 // src/pages/calendar/DayViewPage.jsx
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { format, parse, isValid } from "date-fns";
+import { format, parse } from "date-fns";
 
 export default function DayViewPage() {
   const { date } = useParams(); // 형식: YYYY-MM-DD
@@ -12,13 +12,13 @@ export default function DayViewPage() {
   // URL 파라미터에서 날짜 파싱
   useEffect(() => {
     if (date) {
-      const parsedDate = parse(date, "yyyy-MM-dd", new Date());
-
-      if (isValid(parsedDate)) {
+      try {
+        // YYYY-MM-DD 형식의 문자열을 Date 객체로 변환
+        const parsedDate = parse(date, "yyyy-MM-dd", new Date());
         setSelectedDate(parsedDate);
-      } else {
-        console.error("잘못된 날짜 형식:", date);
-        setSelectedDate(new Date()); // 기본값: 오늘 날짜
+      } catch (error) {
+        console.error("날짜 파싱 오류:", error);
+        setSelectedDate(new Date()); // 오류 시 오늘 날짜로 설정
       }
     } else {
       setSelectedDate(new Date());

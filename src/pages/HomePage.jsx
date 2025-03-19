@@ -11,6 +11,7 @@ import {
   orderBy,
   limit,
 } from "firebase/firestore";
+import TasksWidget from "../components/TasksWidget";
 
 export default function HomePage() {
   const { currentUser } = useAuth();
@@ -333,90 +334,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* 작업 목록 */}
-          <div className="overflow-hidden bg-white shadow-lg rounded-2xl">
-            <div className="flex items-center justify-between p-6 bg-gradient-to-r from-purple-500 to-purple-600">
-              <h2 className="text-xl font-bold text-white">내 작업</h2>
-              <Link
-                to="/tasks"
-                className="text-sm font-medium text-purple-100 hover:text-white"
-              >
-                모두 보기 →
-              </Link>
-            </div>
-            <ul className="divide-y divide-gray-100">
-              {tasks.map((task) => (
-                <li key={task.id}>
-                  <div className="px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <input
-                          id={`task-${task.id}`}
-                          name={`task-${task.id}`}
-                          type="checkbox"
-                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                          checked={task.status === "completed"}
-                          readOnly
-                        />
-                        <label
-                          htmlFor={`task-${task.id}`}
-                          className={`ml-3 text-sm ${
-                            task.status === "completed"
-                              ? "line-through text-gray-500"
-                              : "text-gray-900"
-                          }`}
-                        >
-                          {task.title}
-                        </label>
-                      </div>
-                      <div className="flex flex-shrink-0 ml-2">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            task.priority === "high"
-                              ? "bg-red-100 text-red-800"
-                              : task.priority === "medium"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {task.priority === "high"
-                            ? "높음"
-                            : task.priority === "medium"
-                            ? "중간"
-                            : "낮음"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-gray-500">
-                        마감일: {task.dueDate}
-                      </span>
-                      <span
-                        className={`text-xs ${
-                          task.status === "completed"
-                            ? "text-green-600"
-                            : task.status === "in-progress"
-                            ? "text-blue-600"
-                            : "text-gray-600"
-                        }`}
-                      >
-                        {task.status === "completed"
-                          ? "완료됨"
-                          : task.status === "in-progress"
-                          ? "진행 중"
-                          : "예정됨"}
-                      </span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="px-6 py-3 bg-gray-50">
-              <button className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
-                작업 추가
-              </button>
-            </div>
-          </div>
+          <TasksWidget />
 
           {/* 일정 */}
           <div className="overflow-hidden bg-white shadow-lg rounded-2xl">

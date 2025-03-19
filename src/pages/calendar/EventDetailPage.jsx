@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
 
 export default function EventDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams(); //
   const navigate = useNavigate();
 
   const [event, setEvent] = useState(null);
