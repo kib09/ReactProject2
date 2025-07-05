@@ -1,221 +1,260 @@
-// src/pages/notice/NoticeCreatePage.jsx
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useNoticeStore } from '../../store/noticeStore';
+import { useAuthStore } from '../../store/authStore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 export default function NoticeFormPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const isEditMode = id !== undefined && id !== 'new';
+
+  // Zustand 스토어에서 필요한 상태와 함수 가져오기
+  const { currentNotice, loading, error, fetchNoticeById, clearError, clearCurrentNotice } =
+    useNoticeStore();
+
+  const { currentUser } = useAuthStore();
 
   // 폼 상태 관리
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [isImportant, setIsImportant] = useState(false);
-  const [files, setFiles] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    department: '',
+    isImportant: false,
+    isHtml: false,
+  });
 
-  // 파일 업로드 핸들러
-  const handleFileChange = (e) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setFiles([...files, ...newFiles]);
+  // 수정 모드인 경우 기존 공지사항 데이터 불러오기
+  useEffect(() => {
+    if (isEditMode) {
+      fetchNoticeById(id);
+    } else {
+      clearCurrentNotice();
     }
+
+    // 컴포넌트 언마운트 시 에러와 현재 공지사항 초기화
+    return () => {
+      clearError();
+      clearCurrentNotice();
+    };
+  }, [isEditMode, id, fetchNoticeById, clearCurrentNotice, clearError]);
+
+  // 불러온 공지사항 데이터를 폼에 설정
+  useEffect(() => {
+    if (isEditMode && currentNotice) {
+      setFormData({
+        title: currentNotice.title || '',
+        content: currentNotice.content || '',
+        department: currentNotice.department || '',
+        isImportant: currentNotice.isImportant || false,
+        isHtml: currentNotice.isHtml || false,
+      });
+    }
+  }, [isEditMode, currentNotice]);
+
+  // 입력 필드 변경 처리
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
   };
 
-  // 파일 제거 핸들러
-  const handleRemoveFile = (fileToRemove) => {
-    setFiles(files.filter((file) => file !== fileToRemove));
-  };
-
-  // 폼 제출 핸들러
+  // 폼 제출 처리
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('handleSubmit 실행됨');
 
-    // 유효성 검사
-    if (!title.trim()) {
-      setError("제목을 입력해주세요.");
+    if (!currentUser) {
+      alert('로그인이 필요합니다.');
+      navigate('/login');
       return;
     }
 
-    if (!content.trim()) {
-      setError("내용을 입력해주세요.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
+    // 디버깅용 콘솔 출력
+    console.log('공지사항 저장 시 formData:', formData);
+    console.log('공지사항 저장 시 currentUser:', currentUser);
 
     try {
-      // 나중에 Firebase 연동 예정
-      // 현재는 성공 시뮬레이션
-      setTimeout(() => {
-        alert("공지사항이 등록되었습니다.");
-        navigate("/notice");
-      }, 1000);
+      if (isEditMode) {
+        // 수정
+        await updateDoc(doc(db, 'announcements', id), {
+          ...formData,
+          author: (currentUser && (currentUser.displayName || currentUser.email)) || '익명',
+          department: (currentUser && currentUser.department) || formData.department || '',
+          updatedAt: serverTimestamp(),
+        });
+        alert('공지사항이 수정되었습니다.');
+      } else {
+        // 새로 작성
+        await addDoc(collection(db, 'announcements'), {
+          ...formData,
+          author: (currentUser && (currentUser.displayName || currentUser.email)) || '익명',
+          department: (currentUser && currentUser.department) || formData.department || '',
+          createdAt: serverTimestamp(),
+          date: new Date().toISOString().slice(0, 10),
+        });
+        alert('공지사항이 작성되었습니다.');
+      }
+      navigate('/notice');
     } catch (err) {
-      setError("공지사항 등록 중 오류가 발생했습니다. 다시 시도해주세요.");
-      setIsSubmitting(false);
+      alert('공지사항 저장 실패: ' + err.message);
     }
-  };
-
-  // 파일 크기 포맷팅
-  // 파일크기를 ㅇ최대 메가바이트 단위까지 변호나하여 사용자 친화적인 방식으로
-  // 용량을 표현
-  // 현업에서는 was에 무리를 주지 않기 위해 용량 제한을 두는경우도 많음
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + " B";
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
-    else return (bytes / 1048576).toFixed(1) + " MB";
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h1 className="text-xl font-semibold text-gray-800">공지사항 작성</h1>
+    <div className='px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8'>
+      <div className='mb-6'>
+        <Link to='/notice' className='text-indigo-600 hover:text-indigo-900'>
+          ← 목록으로 돌아가기
+        </Link>
+      </div>
+
+      <div className='overflow-hidden bg-white shadow sm:rounded-lg'>
+        <div className='px-4 py-5 border-b border-gray-200 sm:px-6'>
+          <h1 className='text-2xl font-bold text-gray-900'>
+            {isEditMode ? '공지사항 수정' : '새 공지사항 작성'}
+          </h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
-              <p>{error}</p>
-            </div>
-          )}
-
-          <div className="space-y-6">
-            {/* 제목 입력 */}
-            <div>
-              <label
-                htmlFor="title"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                제목 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
-                placeholder="제목을 입력하세요"
-              />
-            </div>
-
-            {/* 중요 공지 체크박스 */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="isImportant"
-                checked={isImportant}
-                onChange={(e) => setIsImportant(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-              />
-              <label
-                htmlFor="isImportant"
-                className="ml-2 text-sm text-gray-700"
-              >
-                중요 공지사항으로 등록
-              </label>
-            </div>
-
-            {/* 내용 입력 */}
-            <div>
-              <label
-                htmlFor="content"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                내용 <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
-                placeholder="내용을 입력하세요"
-                rows="12"
-              ></textarea>
-            </div>
-
-            {/* 파일 첨부 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                첨부 파일
-              </label>
-
-              {files.length > 0 && (
-                <div className="mb-3 space-y-2">
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500">📎</span>
-                        <span className="text-sm text-gray-700">
-                          {file.name}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          ({formatFileSize(file.size)})
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFile(file)}
-                        className="text-gray-500 hover:text-red-600"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+        {/* 에러 메시지 */}
+        {error && (
+          <div className='px-4 py-5 sm:px-6'>
+            <div className='p-4 rounded-md bg-red-50'>
+              <div className='flex'>
+                <div className='flex-shrink-0'>
+                  <svg
+                    className='w-5 h-5 text-red-400'
+                    xmlns='http://www.w3.org/2000/svg'
+                    viewBox='0 0 20 20'
+                    fill='currentColor'
+                  >
+                    <path
+                      fillRule='evenodd'
+                      d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z'
+                      clipRule='evenodd'
+                    />
+                  </svg>
                 </div>
-              )}
-
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <p className="mb-2 text-sm text-gray-500">
-                      <span className="font-semibold">클릭</span>하여 파일 첨부
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, PDF, DOCX (최대 10MB)
-                    </p>
-                  </div>
-                  <input
-                    type="file"
-                    className="hidden"
-                    multiple
-                    onChange={handleFileChange}
-                  />
-                </label>
+                <div className='ml-3'>
+                  <p className='text-sm text-red-700'>{error}</p>
+                </div>
               </div>
             </div>
           </div>
+        )}
 
-          {/* 버튼 영역 */}
-          <div className="mt-8 flex justify-end gap-3">
-            <Link
-              to="/notice"
-              className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              취소
-            </Link>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`px-5 py-2.5 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors ${
-                isSubmitting ? "opacity-70 cursor-not-allowed" : ""
-              }`}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  저장 중...
-                </div>
-              ) : (
-                "등록하기"
-              )}
-            </button>
+        {/* 로딩 상태 */}
+        {loading && isEditMode ? (
+          <div className='flex justify-center px-4 py-12 sm:px-6'>
+            <div className='w-12 h-12 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin'></div>
           </div>
-        </form>
+        ) : (
+          /* 공지사항 폼 */
+          <form onSubmit={handleSubmit} className='px-4 py-5 sm:px-6'>
+            <div className='space-y-6'>
+              <div>
+                <label htmlFor='title' className='block text-sm font-medium text-gray-700'>
+                  제목 <span className='text-red-500'>*</span>
+                </label>
+                <input
+                  type='text'
+                  name='title'
+                  id='title'
+                  value={formData.title}
+                  onChange={handleChange}
+                  required
+                  className='block w-full mt-1 border-gray-300 rounded-md shadow-sm sm:text-sm'
+                  placeholder='공지사항 제목을 입력하세요'
+                />
+              </div>
+
+              <div>
+                <label htmlFor='department' className='block text-sm font-medium text-gray-700'>
+                  부서
+                </label>
+                <select
+                  id='department'
+                  name='department'
+                  value={formData.department}
+                  onChange={handleChange}
+                  className='block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
+                >
+                  <option value=''>전체</option>
+                  <option value='경영지원팀'>경영지원팀</option>
+                  <option value='개발팀'>개발팀</option>
+                  <option value='디자인팀'>디자인팀</option>
+                  <option value='마케팅팀'>마케팅팀</option>
+                  <option value='영업팀'>영업팀</option>
+                  <option value='인사팀'>인사팀</option>
+                  <option value='IT인프라팀'>IT인프라팀</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor='content' className='block text-sm font-medium text-gray-700'>
+                  내용 <span className='text-red-500'>*</span>
+                </label>
+                <textarea
+                  id='content'
+                  name='content'
+                  rows='15'
+                  value={formData.content}
+                  onChange={handleChange}
+                  required
+                  className='block w-full mt-1 border-gray-300 rounded-md shadow-sm sm:text-sm'
+                  placeholder='공지사항 내용을 입력하세요'
+                ></textarea>
+              </div>
+
+              <div className='flex items-center'>
+                <input
+                  id='isImportant'
+                  name='isImportant'
+                  type='checkbox'
+                  checked={formData.isImportant}
+                  onChange={handleChange}
+                  className='w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500'
+                />
+                <label htmlFor='isImportant' className='block ml-2 text-sm text-gray-900'>
+                  중요 공지사항으로 표시
+                </label>
+              </div>
+
+              <div className='flex items-center'>
+                <input
+                  id='isHtml'
+                  name='isHtml'
+                  type='checkbox'
+                  checked={formData.isHtml}
+                  onChange={handleChange}
+                  className='w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500'
+                />
+                <label htmlFor='isHtml' className='block ml-2 text-sm text-gray-900'>
+                  HTML 형식으로 작성
+                </label>
+              </div>
+
+              <div className='flex justify-end space-x-3'>
+                <Link
+                  to='/notice'
+                  className='inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+                >
+                  취소
+                </Link>
+                <button
+                  type='submit'
+                  disabled={loading}
+                  className='inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+                >
+                  {loading ? '저장 중...' : isEditMode ? '수정하기' : '작성하기'}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
