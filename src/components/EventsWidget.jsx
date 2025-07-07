@@ -50,9 +50,11 @@ export default function EventsWidget({ events, userId }) {
                   <div className='flex-shrink-0 ml-2'>
                     <div className='flex flex-col items-center justify-center px-3 py-1 rounded-lg bg-indigo-50'>
                       <span className='text-xs font-medium text-indigo-800'>
-                        {event.date.split(' ')[0].split('-')[2]}일
+                        {(event.date?.split(' ')[0]?.split('-')[2] || '') + '일'}
                       </span>
-                      <span className='text-xs text-indigo-600'>{event.date.split(' ')[1]}</span>
+                      <span className='text-xs text-indigo-600'>
+                        {event.date?.split(' ')[1] || ''}
+                      </span>
                     </div>
                   </div>
                 </div>

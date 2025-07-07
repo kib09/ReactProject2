@@ -17,6 +17,11 @@ import NotFoundPage from './pages/NotFoundPage.jsx';
 import TasksPage from './pages/tasks/TasksPage.jsx';
 import TaskFormPage from './pages/tasks/TaskFormPage.jsx';
 import TaskDetailPage from './pages/tasks/TaskDetailPage.jsx';
+import TaskManagementPage from './pages/tasks/TaskManagementPage.jsx';
+import TaskAddPage from './pages/tasks/TaskFormPage.jsx';
+import ContactsPage from './pages/contacts/ContactsPage.jsx';
+import AdminPage from './pages/auth/AdminPage.jsx';
+
 export default function App() {
   return (
     <AuthProvider>
@@ -41,9 +46,11 @@ export default function App() {
             <Route path='/calendar/new' element={<EventFormPage />} />
             <Route path='/calendar/edit/:id' element={<EventFormPage />} />
 
-            <Route path='/tasks' element={<TasksPage />} />
-            <Route path='/tasks/new' element={<TaskFormPage />} />
+            <Route path='/tasks' element={<TaskManagementPage />} />
+            <Route path='/tasks/new' element={<TaskAddPage />} />
             <Route path='/tasks/:id' element={<TaskDetailPage />} />
+            <Route path='/contacts' element={<ContactsPage />} />
+            <Route path='/admin' element={<AdminPage />} />
           </Route>
         </Route>
         <Route path='*' element={<NotFoundPage />} />

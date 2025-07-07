@@ -34,6 +34,12 @@ export default function Navbar() {
                 공지사항
               </Link>
               <Link
+                to='/tasks'
+                className='px-3 py-2 text-sm font-medium rounded-md hover:bg-indigo-500'
+              >
+                작업관리
+              </Link>
+              <Link
                 to='/calendar'
                 className='px-3 py-2 text-sm font-medium rounded-md hover:bg-indigo-500'
               >

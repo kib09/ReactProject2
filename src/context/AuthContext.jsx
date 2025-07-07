@@ -1,5 +1,5 @@
 // src/contexts/AuthContext.jsx
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -8,9 +8,9 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   updateProfile,
-} from "firebase/auth";
-import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "../firebase";
+} from 'firebase/auth';
+import { doc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
 
@@ -21,33 +21,33 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   // Google 로그인 함수
   const loginWithGoogle = async () => {
     try {
-      setError("");
+      setError('');
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
 
       // Firestore에 사용자 정보 저장
       await setDoc(
-        doc(db, "users", result.user.uid),
+        doc(db, 'users', result.user.uid),
         {
           email: result.user.email,
           displayName: result.user.displayName,
           photoURL: result.user.photoURL,
-          role: "member",
+          role: 'member',
           createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
           settings: {
-            theme: "system",
+            theme: 'system',
             notifications: {
               email: true,
               push: true,
               desktop: true,
             },
-            language: "ko",
+            language: 'ko',
           },
         },
         { merge: true }
@@ -55,52 +55,44 @@ export function AuthProvider({ children }) {
 
       return result.user;
     } catch (err) {
-      console.error("Google 로그인 오류:", err);
-      setError("Google 로그인에 실패했습니다.");
+      console.error('Google 로그인 오류:', err);
+      setError('Google 로그인에 실패했습니다.');
       throw err;
     }
   };
 
   // 이메일/비밀번호 회원가입 함수
-  const register = async (
-    email,
-    password,
-    displayName,
-    department,
-    position
-  ) => {
+  const register = async (email, password, displayName, department, position, phone) => {
     try {
-      setError("");
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      setError('');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName });
 
       // Firestore에 사용자 정보 저장
-      await setDoc(doc(db, "users", userCredential.user.uid), {
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
         email,
         displayName,
         department,
         position,
-        role: "member",
+        phone,
+        isAdmin: false,
+        role: 'member',
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
         settings: {
-          theme: "system",
+          theme: 'system',
           notifications: {
             email: true,
             push: true,
             desktop: true,
           },
-          language: "ko",
+          language: 'ko',
         },
       });
 
       return userCredential.user;
     } catch (err) {
-      console.error("회원가입 오류:", err);
+      console.error('회원가입 오류:', err);
       setError(`회원가입 실패: ${err.message}`);
       throw err;
     }
@@ -109,21 +101,17 @@ export function AuthProvider({ children }) {
   // 이메일/비밀번호 로그인 함수
   const login = async (email, password) => {
     try {
-      setError("");
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      setError('');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
       // 마지막 로그인 시간 업데이트
-      await updateDoc(doc(db, "users", userCredential.user.uid), {
+      await updateDoc(doc(db, 'users', userCredential.user.uid), {
         lastLogin: serverTimestamp(),
       });
 
       return userCredential.user;
     } catch (err) {
-      console.error("로그인 오류:", err);
+      console.error('로그인 오류:', err);
       setError(`로그인 실패: ${err.message}`);
       throw err;
     }
@@ -132,10 +120,10 @@ export function AuthProvider({ children }) {
   // 로그아웃 함수
   const logout = async () => {
     try {
-      setError("");
+      setError('');
       await signOut(auth);
     } catch (err) {
-      console.error("로그아웃 오류:", err);
+      console.error('로그아웃 오류:', err);
       setError(`로그아웃 실패: ${err.message}`);
       throw err;
     }
@@ -143,8 +131,18 @@ export function AuthProvider({ children }) {
 
   // 인증 상태 변화 감지
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Firestore에서 추가 정보 가져오기
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userData = userDoc.exists() ? userDoc.data() : {};
+        setCurrentUser({
+          ...user,
+          ...userData, // isAdmin 등 Firestore 정보 병합
+        });
+      } else {
+        setCurrentUser(null);
+      }
       setLoading(false);
     });
 
@@ -162,9 +160,5 @@ export function AuthProvider({ children }) {
     setError,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }

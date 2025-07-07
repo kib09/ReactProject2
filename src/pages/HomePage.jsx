@@ -5,41 +5,40 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import TasksWidget from '../components/TasksWidget';
-import AnnouncementsWidget from '../components/AnnouncementsWidget';
 import EventsWidget from '../components/EventsWidget';
+import { startOfDay, endOfDay } from 'date-fns';
+import AnnouncementsWidget from '../components/AnnouncementsWidget';
 
 export default function HomePage() {
   const { currentUser } = useAuth();
-  const [announcements, setAnnouncements] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
 
   // 사용자 데이터 로드
   useEffect(() => {
-    const fetchAnnouncements = async () => {
-      const q = query(collection(db, 'announcements'), orderBy('date', 'desc'), limit(5));
+    const fetchTasks = async () => {
+      const q = query(collection(db, 'tasks'), orderBy('dueDate', 'asc'), limit(5));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     };
-    const fetchTasks = async (userId) => {
-      const q = query(
-        collection(db, 'tasks'),
-        where('userId', '==', userId),
-        orderBy('dueDate', 'asc'),
-        limit(5)
-      );
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    };
-    const fetchEvents = async (userId) => {
+    const fetchEvents = async () => {
+      const todayStart = startOfDay(new Date());
+      const todayEnd = endOfDay(new Date());
       const q = query(
         collection(db, 'events'),
-        where('userId', '==', userId),
-        orderBy('date', 'asc'),
+        where('start', '>=', todayStart),
+        where('start', '<=', todayEnd),
+        orderBy('start', 'asc'),
         limit(5)
       );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    };
+    const fetchAnnouncements = async () => {
+      const q = query(collection(db, 'announcements'), orderBy('date', 'desc'), limit(5));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     };
@@ -55,12 +54,12 @@ export default function HomePage() {
           joinDate: '2023-01-15',
         });
         // Firestore에서 데이터 불러오기
+        const t = await fetchTasks();
+        setTasks(t);
+        const ev = await fetchEvents();
+        setEvents(ev);
         const ann = await fetchAnnouncements();
         setAnnouncements(ann);
-        const t = await fetchTasks(currentUser.uid);
-        setTasks(t);
-        const ev = await fetchEvents(currentUser.uid);
-        setEvents(ev);
         setLoading(false);
       } catch (error) {
         console.error('데이터 로드 중 오류 발생:', error);
@@ -101,10 +100,10 @@ export default function HomePage() {
   ];
 
   const quickAccess = [
-    { name: '게시판', color: 'bg-blue-500', path: '/notice' },
+    { name: '공지사항', color: 'bg-blue-500', path: '/notice' },
+    { name: '작업관리', color: 'bg-purple-500', path: '/tasks' },
     { name: '일정관리', color: 'bg-green-500', path: '/calendar' },
-    { name: '메시지', color: 'bg-purple-500', path: '/messages' },
-    { name: '업무관리', color: 'bg-yellow-500', path: '/tasks' },
+    { name: '메시지', color: 'bg-yellow-500', path: '/messages' },
     { name: '전자결재', color: 'bg-red-500', path: '/approval' },
     { name: '주소록', color: 'bg-indigo-500', path: '/contacts' },
   ];
@@ -215,10 +214,7 @@ export default function HomePage() {
         {/* 메인 그리드 */}
         <div className='grid grid-cols-1 gap-6 mt-8 lg:grid-cols-3'>
           <AnnouncementsWidget announcements={announcements} />
-
-          {/* 내작업 */}
           <TasksWidget />
-
           <EventsWidget events={events} userId={currentUser?.uid} />
         </div>
 
