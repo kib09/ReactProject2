@@ -1,6 +1,19 @@
 import { Link } from 'react-router-dom';
 
-export default function AnnouncementsWidget({ announcements }) {
+function toDateFormat(val) {
+  if (!val) return '';
+  let dateObj;
+  if (val instanceof Date) dateObj = val;
+  else if (val.toDate) dateObj = val.toDate();
+  else if (typeof val === 'string' || typeof val === 'number') dateObj = new Date(val);
+  else return '';
+  const y = dateObj.getFullYear();
+  const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+  const d = dateObj.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export default function AnnouncementsWidget({ announcements, myDepartment }) {
   // 공지사항 작성 페이지로 이동
   const handleAdd = () => {
     window.location.href = '/notice/new';
@@ -20,35 +33,44 @@ export default function AnnouncementsWidget({ announcements }) {
         </div>
       ) : (
         <ul className='divide-y divide-gray-100'>
-          {announcements.map((announcement) => (
-            <li key={announcement.id}>
-              <Link
-                to={`/notice/${announcement.id}`}
-                className='block transition-colors hover:bg-gray-50'
-              >
-                <div className='px-6 py-4'>
-                  <div className='flex items-start justify-between'>
-                    <div className='flex-1'>
-                      <p className='text-sm font-medium text-gray-900'>
-                        {announcement.isImportant && (
+          {announcements.map((announcement) => {
+            const isImportant =
+              announcement.department === myDepartment || announcement.department === '전체';
+            return (
+              <li key={announcement.id}>
+                <Link
+                  to={`/notice/${announcement.id}`}
+                  className='block transition-colors hover:bg-gray-50'
+                >
+                  <div className='px-6 py-4'>
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center'>
+                        {isImportant && (
                           <span className='inline-block w-2 h-2 mr-2 align-middle rounded-full bg-red-500'></span>
                         )}
-                        {announcement.title}
-                      </p>
-                      <div className='flex items-center mt-1 text-xs text-gray-500'>
-                        <span>{announcement.department}</span>
-                        <span className='mx-1'>•</span>
-                        <span>{announcement.author}</span>
+                        <span
+                          className={`text-sm font-medium ${
+                            isImportant ? 'text-red-600' : 'text-gray-900'
+                          }`}
+                        >
+                          {announcement.title}
+                        </span>
+                      </div>
+                      <div className='flex flex-shrink-0 ml-2 text-xs text-gray-500'>
+                        {toDateFormat(announcement.date)}
                       </div>
                     </div>
-                    <div className='flex-shrink-0 ml-2 text-xs text-gray-500'>
-                      {announcement.date}
+                    <div className='flex items-center justify-between mt-1 text-xs text-gray-500'>
+                      <span>
+                        작성자: {announcement.authorName || announcement.author || '-'} /{' '}
+                        {announcement.department || '-'}
+                      </span>
                     </div>
                   </div>
-                </div>
-              </Link>
-            </li>
-          ))}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
       <div className='px-6 py-3 bg-gray-50'>

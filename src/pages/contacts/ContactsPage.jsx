@@ -1,21 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
+// 부서별 색상 (CalendarCategories와 동일하게 하드코딩)
+const DEPARTMENT_COLORS = {
+  '회사 일정': '#4F46E5',
+  개발팀: '#059669',
+  마케팅팀: '#DC2626',
+  인사팀: '#D97706',
+  '내 일정': '#7C3AED',
+};
 
 export default function ContactsPage() {
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
-  const [tasksMap, setTasksMap] = useState({}); // {userId: [진행중 작업들]}
+  const [tasksMap, setTasksMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUsersAndTasks = async () => {
       setLoading(true);
       try {
-        // 1. 전체 유저 불러오기
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const usersList = usersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setUsers(usersList);
-        // 2. 각 유저별 진행중인 작업 불러오기
         const tasksMapTemp = {};
         for (const user of usersList) {
           const tasksQ = query(
@@ -35,62 +46,110 @@ export default function ContactsPage() {
     fetchUsersAndTasks();
   }, []);
 
-  const handleMessageClick = (user) => {
-    alert(`${user.name || user.displayName || user.email}님과의 메시지 채널은 추후 지원됩니다.`);
-  };
-
   if (loading) {
     return <div className='p-8 text-center'>불러오는 중...</div>;
   }
 
+  // 내 정보와 타인 분리
+  const myUser = users.find((u) => u.id === currentUser?.uid);
+  const otherUsers = users.filter((u) => u.id !== currentUser?.uid);
+
+  // 부서별 그룹핑
+  const departments = {};
+  otherUsers.forEach((user) => {
+    const dept = user.department || '기타';
+    if (!departments[dept]) departments[dept] = [];
+    departments[dept].push(user);
+  });
+
+  // 카드 렌더 함수
+  const renderUserCard = (user, isMe = false, deptColor = undefined) => (
+    <div
+      key={user.id}
+      className={`rounded-2xl shadow p-6 flex flex-col gap-2 relative bg-white`}
+      style={deptColor ? { borderLeft: `8px solid ${deptColor}` } : {}}
+    >
+      <div className='flex items-center gap-3 mb-2'>
+        <div
+          className='w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg'
+          style={{ backgroundColor: deptColor || '#E0E7FF', color: deptColor ? '#fff' : '#4F46E5' }}
+        >
+          {(user.name || user.displayName || '-').charAt(0)}
+        </div>
+        <div>
+          <div className='text-base font-semibold text-gray-900'>
+            {user.name || user.displayName || '-'}
+          </div>
+          <div className='text-xs text-gray-500'>{user.email || '-'}</div>
+        </div>
+      </div>
+      <div className='flex flex-wrap gap-2 text-xs text-gray-600'>
+        <span>부서: {user.department || '-'}</span>
+        <span>직책: {user.position || '-'}</span>
+        <span>전화: {user.phone || '-'}</span>
+      </div>
+      <div className='mt-2'>
+        <div className='text-xs text-gray-500 mb-1'>진행중인 작업</div>
+        {tasksMap[user.id] && tasksMap[user.id].length > 0 ? (
+          <ul className='list-disc list-inside text-xs text-gray-700'>
+            {tasksMap[user.id].map((task) => (
+              <li key={task.id}>{task.title}</li>
+            ))}
+          </ul>
+        ) : (
+          <span className='text-gray-400 text-xs'>없음</span>
+        )}
+      </div>
+      {isMe ? (
+        <div className='mt-4'>
+          <button
+            className='flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md shadow-sm hover:bg-indigo-700 transition-colors'
+            onClick={() => navigate('/profile')}
+          >
+            내 정보 수정
+          </button>
+        </div>
+      ) : (
+        <div className='mt-4'>
+          <button
+            className='flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md shadow-sm hover:bg-green-700 transition-colors'
+            onClick={() => navigate(`/messages/${user.id}`)}
+          >
+            메시지
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className='max-w-5xl mx-auto px-4 py-8'>
-      <h1 className='text-2xl font-bold mb-6'>주소록</h1>
-      <div className='overflow-x-auto'>
-        <table className='min-w-full bg-white rounded-xl shadow border'>
-          <thead>
-            <tr className='bg-gray-100'>
-              <th className='px-4 py-2'>이름</th>
-              <th className='px-4 py-2'>이메일</th>
-              <th className='px-4 py-2'>부서</th>
-              <th className='px-4 py-2'>직책</th>
-              <th className='px-4 py-2'>전화번호</th>
-              <th className='px-4 py-2'>진행중인 작업</th>
-              <th className='px-4 py-2'>메시지</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className='border-t'>
-                <td className='px-4 py-2'>{user.name || user.displayName || '-'}</td>
-                <td className='px-4 py-2'>{user.email || '-'}</td>
-                <td className='px-4 py-2'>{user.department || '-'}</td>
-                <td className='px-4 py-2'>{user.position || '-'}</td>
-                <td className='px-4 py-2'>{user.phone || '-'}</td>
-                <td className='px-4 py-2'>
-                  {tasksMap[user.id] && tasksMap[user.id].length > 0 ? (
-                    <ul className='list-disc list-inside text-xs text-gray-700'>
-                      {tasksMap[user.id].map((task) => (
-                        <li key={task.id}>{task.title}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span className='text-gray-400 text-xs'>없음</span>
-                  )}
-                </td>
-                <td className='px-4 py-2'>
-                  <button
-                    className='px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs'
-                    onClick={() => handleMessageClick(user)}
-                  >
-                    메시지
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className='flex items-center justify-between p-6 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-2xl shadow-lg mb-8'>
+        <h1 className='text-xl font-bold text-white'>주소록</h1>
       </div>
+      {/* 내 정보 */}
+      {myUser && (
+        <div className='mb-8'>
+          {renderUserCard(myUser, true, DEPARTMENT_COLORS[myUser.department] || '#4F46E5')}
+        </div>
+      )}
+      {/* 부서별 그룹핑 */}
+      {Object.entries(departments).map(([dept, users]) => (
+        <div key={dept} className='mb-8'>
+          <div className='flex items-center mb-3'>
+            <div
+              className='w-3 h-3 rounded-full mr-2'
+              style={{ backgroundColor: DEPARTMENT_COLORS[dept] || '#A3A3A3' }}
+            ></div>
+            <span className='font-semibold' style={{ color: DEPARTMENT_COLORS[dept] || '#A3A3A3' }}>
+              {dept}
+            </span>
+          </div>
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
+            {users.map((user) => renderUserCard(user, false, DEPARTMENT_COLORS[dept] || '#A3A3A3'))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

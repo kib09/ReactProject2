@@ -14,13 +14,15 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import PrivateRoute from './components/PrivateRoute.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
-import TasksPage from './pages/tasks/TasksPage.jsx';
 import TaskFormPage from './pages/tasks/TaskFormPage.jsx';
 import TaskDetailPage from './pages/tasks/TaskDetailPage.jsx';
 import TaskManagementPage from './pages/tasks/TaskManagementPage.jsx';
 import TaskAddPage from './pages/tasks/TaskFormPage.jsx';
 import ContactsPage from './pages/contacts/ContactsPage.jsx';
 import AdminPage from './pages/auth/AdminPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
+import MessagePage from './pages/MessagePage.jsx';
+import MessageListPage from './pages/MessageListPage.jsx';
 
 export default function App() {
   return (
@@ -49,7 +51,11 @@ export default function App() {
             <Route path='/tasks' element={<TaskManagementPage />} />
             <Route path='/tasks/new' element={<TaskAddPage />} />
             <Route path='/tasks/:id' element={<TaskDetailPage />} />
+            <Route path='/tasks/:id/edit' element={<TaskFormPage />} />
             <Route path='/contacts' element={<ContactsPage />} />
+            <Route path='/profile' element={<ProfilePage />} />
+            <Route path='/messages' element={<MessageListPage />} />
+            <Route path='/messages/:userId' element={<MessagePage />} />
             <Route path='/admin' element={<AdminPage />} />
           </Route>
         </Route>

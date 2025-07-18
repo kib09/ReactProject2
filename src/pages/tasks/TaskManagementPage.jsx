@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function TaskManagementPage() {
   const [tasks, setTasks] = useState([]);
@@ -158,7 +158,11 @@ export default function TaskManagementPage() {
             </div>
           ) : (
             currentTasks.map((task) => (
-              <div key={task.id} className='block hover:bg-gray-50 transition-colors'>
+              <Link
+                key={task.id}
+                to={`/tasks/${task.id}`}
+                className='block hover:bg-gray-50 transition-colors'
+              >
                 <div className='px-6 py-4'>
                   <h3 className='font-medium text-gray-900 mb-1'>{task.title}</h3>
                   <div className='flex items-center text-xs text-gray-500'>
@@ -170,8 +174,8 @@ export default function TaskManagementPage() {
                       {task.createdAt && task.createdAt.seconds
                         ? new Date(task.createdAt.seconds * 1000).toLocaleDateString()
                         : typeof task.createdAt === 'string'
-                          ? task.createdAt
-                          : ''}
+                        ? task.createdAt
+                        : ''}
                     </span>
                     <span className='mx-1'>•</span>
                     <span>조회 {task.viewCount || 0}</span>
@@ -179,7 +183,7 @@ export default function TaskManagementPage() {
                     <span>{task.status}</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))
           )}
         </div>

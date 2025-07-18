@@ -21,7 +21,7 @@ export default function Navbar() {
         <div className='flex justify-between h-16'>
           <div className='flex items-center'>
             <Link to='/' className='flex items-center flex-shrink-0'>
-              <span className='text-xl font-bold'>그룹웨어</span>
+              <span className='text-xl font-bold'>작당모의</span>
             </Link>
             <div className='flex items-center ml-10 space-x-4'>
               <Link to='/' className='px-3 py-2 text-sm font-medium rounded-md hover:bg-indigo-500'>

@@ -3,99 +3,137 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, doc, getDoc, limit, where } from 'firebase/firestore';
 import TasksWidget from '../components/TasksWidget';
 import EventsWidget from '../components/EventsWidget';
-import { startOfDay, endOfDay } from 'date-fns';
 import AnnouncementsWidget from '../components/AnnouncementsWidget';
+import { getDatabase, ref, onValue } from 'firebase/database';
 
 export default function HomePage() {
   const { currentUser } = useAuth();
+  const [userInfo, setUserInfo] = useState({ name: '', department: '', position: '' });
   const [tasks, setTasks] = useState([]);
   const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [userInfo, setUserInfo] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // 사용자 데이터 로드
   useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (!currentUser) return { name: '', department: '', position: '' };
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        return {
+          name: data.displayName || '',
+          department: data.department || '',
+          position: data.position || '',
+        };
+      }
+      return { name: '', department: '', position: '' };
+    };
+    const fetchAnnouncements = async () => {
+      const q = query(collection(db, 'announcements'), orderBy('date', 'desc'), limit(10));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    };
     const fetchTasks = async () => {
-      const q = query(collection(db, 'tasks'), orderBy('dueDate', 'asc'), limit(5));
+      const q = query(collection(db, 'tasks'), orderBy('createdAt', 'desc'), limit(20));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     };
     const fetchEvents = async () => {
-      const todayStart = startOfDay(new Date());
-      const todayEnd = endOfDay(new Date());
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       const q = query(
         collection(db, 'events'),
-        where('start', '>=', todayStart),
-        where('start', '<=', todayEnd),
+        where('start', '>=', today),
         orderBy('start', 'asc'),
-        limit(5)
+        limit(10)
       );
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     };
-    const fetchAnnouncements = async () => {
-      const q = query(collection(db, 'announcements'), orderBy('date', 'desc'), limit(5));
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    };
-    const fetchUserData = async () => {
+    const fetchAll = async () => {
       setLoading(true);
       try {
-        setUserInfo({
-          displayName: currentUser?.displayName || '사용자',
-          email: currentUser?.email,
-          photoURL: currentUser?.photoURL,
-          department: '개발팀', // Firestore에서 추가 정보 로드 가능
-          role: '팀원',
-          joinDate: '2023-01-15',
-        });
-        // Firestore에서 데이터 불러오기
-        const t = await fetchTasks();
-        setTasks(t);
-        const ev = await fetchEvents();
-        setEvents(ev);
-        const ann = await fetchAnnouncements();
-        setAnnouncements(ann);
-        setLoading(false);
-      } catch (error) {
-        console.error('데이터 로드 중 오류 발생:', error);
-        setLoading(false);
+        const user = await fetchUserInfo();
+        setUserInfo(user);
+        const [ann, t, ev] = await Promise.all([fetchAnnouncements(), fetchTasks(), fetchEvents()]);
+        setAnnouncements(ann.slice(0, 5));
+        setTasks(
+          t
+            .filter(
+              (task) =>
+                ((currentUser && task.assignedTo === currentUser.uid) ||
+                  (user.department && task.department === user.department)) &&
+                task.status !== '완료' &&
+                task.status !== 'completed'
+            )
+            .sort((a, b) => {
+              // 진행중이 먼저, 그 다음 예정
+              if (a.status === b.status) return 0;
+              if (a.status === '진행중' || a.status === 'in-progress') return -1;
+              if (b.status === '진행중' || b.status === 'in-progress') return 1;
+              return 0;
+            })
+            .slice(0, 5)
+        );
+        setEvents(
+          ev
+            .filter(
+              (event) =>
+                (user.department === '개발팀' &&
+                  (event.category === 'dev' || event.category === 'personal')) ||
+                user.department !== '개발팀'
+            )
+            .slice(0, 5)
+        );
+      } catch {
+        // 에러 처리
       }
+      setLoading(false);
     };
+    if (currentUser) fetchAll();
+
+    // 새로운 메시지(읽지 않은 메시지) 개수 구하기
+    const rtdb = getDatabase();
+    let unsub = null;
     if (currentUser) {
-      fetchUserData();
+      const channelsRef = ref(rtdb, 'channels');
+      unsub = onValue(channelsRef, (snap) => {
+        const all = snap.val() || {};
+        let count = 0;
+        Object.values(all).forEach((ch) => {
+          if (ch.members && ch.members[currentUser.uid] && ch.messages) {
+            Object.values(ch.messages).forEach((msg) => {
+              if (msg.sender !== currentUser.uid && !msg.seen) count++;
+            });
+          }
+        });
+        setUnreadCount(count);
+      });
     }
+    return () => {
+      if (unsub) unsub();
+    };
   }, [currentUser]);
 
   // 테스크 통계 계산
   const stats = [
     {
-      name: '완료한 작업',
-      value: tasks.filter((task) => task.status === 'completed').length.toString(),
-      change: '+4',
-      changeType: 'increase',
-    },
-    {
       name: '진행 중인 작업',
-      value: tasks.filter((task) => task.status === 'in-progress').length.toString(),
-      change: '-2',
-      changeType: 'decrease',
+      value: tasks
+        .filter((task) => task.status === '진행중' || task.status === 'in-progress')
+        .length.toString(),
     },
     {
       name: '예정된 미팅',
       value: events.length.toString(),
-      change: '+1',
-      changeType: 'increase',
     },
     {
-      name: '새로운 알림',
-      value: '16',
-      change: '+3',
-      changeType: 'increase',
+      name: '새로운 메시지',
+      value: unreadCount.toString(),
     },
   ];
 
@@ -104,7 +142,6 @@ export default function HomePage() {
     { name: '작업관리', color: 'bg-purple-500', path: '/tasks' },
     { name: '일정관리', color: 'bg-green-500', path: '/calendar' },
     { name: '메시지', color: 'bg-yellow-500', path: '/messages' },
-    { name: '전자결재', color: 'bg-red-500', path: '/approval' },
     { name: '주소록', color: 'bg-indigo-500', path: '/contacts' },
   ];
 
@@ -138,7 +175,7 @@ export default function HomePage() {
           <div className='md:flex md:items-center md:justify-between'>
             <div className='md:w-1/2'>
               <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>
-                {greeting}, <span className='text-indigo-200'>{userInfo?.displayName}</span>
+                {greeting}, <span className='text-indigo-200'>{userInfo?.name}</span>
                 님!
               </h1>
               {/* 오늘의 문구  */}
@@ -147,19 +184,8 @@ export default function HomePage() {
               </p>
               <div className='mt-3 text-sm text-indigo-200'>
                 <span>
-                  {userInfo?.department} | {userInfo?.role}
+                  {userInfo?.department} || {userInfo?.position}
                 </span>
-              </div>
-              <div className='flex mt-8 space-x-4'>
-                <button className='px-5 py-3 font-medium text-indigo-600 transition-all duration-300 bg-white rounded-lg shadow-md hover:shadow-lg'>
-                  작업 시작하기
-                </button>
-                <Link
-                  to='/calendar'
-                  className='px-5 py-3 font-medium text-white transition-all duration-300 bg-indigo-700 rounded-lg shadow-md hover:shadow-lg'
-                >
-                  일정 확인하기
-                </Link>
               </div>
             </div>
             <div className='hidden mt-8 md:block md:w-1/2 md:mt-0'>
@@ -195,13 +221,6 @@ export default function HomePage() {
                     <dd>
                       <div className='flex items-baseline'>
                         <div className='text-2xl font-semibold text-gray-900'>{stat.value}</div>
-                        <div
-                          className={`ml-2 flex items-baseline text-sm font-semibold ${
-                            stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-                          }`}
-                        >
-                          {stat.change}
-                        </div>
                       </div>
                     </dd>
                   </dl>
@@ -211,11 +230,16 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* 메인 그리드 */}
-        <div className='grid grid-cols-1 gap-6 mt-8 lg:grid-cols-3'>
-          <AnnouncementsWidget announcements={announcements} />
-          <TasksWidget />
-          <EventsWidget events={events} userId={currentUser?.uid} />
+        {/* 내 작업, 다가오는 일정, 공지사항 위젯 */}
+        <div className='grid grid-cols-1 gap-6 mt-8 md:grid-cols-3'>
+          <AnnouncementsWidget announcements={announcements} myDepartment={userInfo.department} />
+          <TasksWidget
+            tasks={tasks}
+            myUid={currentUser.uid}
+            myDepartment={userInfo.department}
+            myName={userInfo.name}
+          />
+          <EventsWidget events={events} />
         </div>
 
         {/* 빠른 액세스 */}

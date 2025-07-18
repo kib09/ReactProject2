@@ -2,27 +2,26 @@ import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-export default function EventsWidget({ events, userId }) {
+function toDateFormat(val) {
+  if (!val) return '';
+  let dateObj;
+  if (val instanceof Date) dateObj = val;
+  else if (val.toDate) dateObj = val.toDate();
+  else if (typeof val === 'string' || typeof val === 'number') dateObj = new Date(val);
+  else return '';
+  const y = dateObj.getFullYear();
+  const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+  const d = dateObj.getDate().toString().padStart(2, '0');
+  const hh = dateObj.getHours().toString().padStart(2, '0');
+  const mm = dateObj.getMinutes().toString().padStart(2, '0');
+  return `${y}-${m}-${d} ${hh}:${mm}`;
+}
+
+export default function EventsWidget({ events }) {
   // Firestore에 새 일정 추가
-  const handleAdd = async () => {
-    const title = prompt('일정 제목을 입력하세요');
-    if (!title) return;
-    const location = prompt('장소를 입력하세요');
-    if (!location) return;
-    const date = prompt('날짜와 시간을 입력하세요 (예: 2025-03-20 15:00)');
-    if (!date) return;
-    try {
-      await addDoc(collection(db, 'events'), {
-        title,
-        location,
-        date,
-        userId,
-        createdAt: serverTimestamp(),
-      });
-      alert('일정이 추가되었습니다! 새로고침 해주세요.');
-    } catch (e) {
-      alert('일정 추가 실패: ' + e.message);
-    }
+
+  const handleAdd = () => {
+    window.location.href = '/calendar/new';
   };
 
   return (
@@ -41,24 +40,20 @@ export default function EventsWidget({ events, userId }) {
         <ul className='divide-y divide-gray-100'>
           {events.map((event) => (
             <li key={event.id}>
-              <div className='px-6 py-4'>
-                <div className='flex justify-between'>
-                  <div>
-                    <p className='text-sm font-medium text-gray-900'>{event.title}</p>
-                    <p className='mt-1 text-xs text-gray-500'>{event.location}</p>
+              <Link
+                to={`/calendar/${event.id}`}
+                className='block hover:bg-gray-50 transition-colors'
+              >
+                <div className='px-6 py-4'>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-gray-900'>{event.title}</span>
+                    <span className='text-xs text-gray-500'>{toDateFormat(event.start)}</span>
                   </div>
-                  <div className='flex-shrink-0 ml-2'>
-                    <div className='flex flex-col items-center justify-center px-3 py-1 rounded-lg bg-indigo-50'>
-                      <span className='text-xs font-medium text-indigo-800'>
-                        {(event.date?.split(' ')[0]?.split('-')[2] || '') + '일'}
-                      </span>
-                      <span className='text-xs text-indigo-600'>
-                        {event.date?.split(' ')[1] || ''}
-                      </span>
-                    </div>
+                  <div className='flex items-center justify-between mt-1 text-xs text-gray-500'>
+                    <span>장소: {event.location || '-'}</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             </li>
           ))}
         </ul>
