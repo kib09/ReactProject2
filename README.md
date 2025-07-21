@@ -9,10 +9,10 @@
 
 ## 주요 기술 스택
 
-- **React**: UI 라이브러리
-- **Vite**: 프론트엔드 빌드 도구
-- **Firebase**: 인증, Firestore DB, 호스팅 등
-- **Zustand**: 상태 관리
+- **React**: 리액트 
+- **Vite**:  빌드
+- **Firebase**: 인증, Firestore DB,Realtime DB 호스팅 등
+- **Zustand**: 상태 관리 라이브러리
 - **Styled-components**: CSS-in-JS 스타일링
 - **React Router v7**: 라우팅
 - **Tailwind CSS**: 유틸리티 퍼스트 CSS 프레임워크
