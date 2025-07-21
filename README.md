@@ -82,7 +82,7 @@ src/
 ```
 
 ##[유저 플로우]
-![유저 플로우](public/screenshots/userflow.png)
+![유저 플로우](public/screenshots/user-flow.png)
 
 ---
 
@@ -94,11 +94,11 @@ src/
 
 ### 2. 대시보드
 
-![대시보드](public/screenshots/dashboard.png)
+![대시보드](public/screenshots/main.png)
 
 ### 3. 공지사항 목록
 
-![공지사항](public/screenshots/notice_list.png)
+![공지사항](public/screenshots/notice.png)
 
 ### 4. 일정/캘린더
 

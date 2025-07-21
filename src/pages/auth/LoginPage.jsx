@@ -41,7 +41,7 @@ export default function LoginPage() {
       <div className='w-full max-w-md space-y-8'>
         <div>
           <h2 className='mt-6 text-3xl font-extrabold text-center text-gray-900'>
-            그룹웨어 로그인
+            작당모의 로그인
           </h2>
         </div>
 
