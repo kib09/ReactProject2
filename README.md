@@ -133,7 +133,7 @@ src/
   -- \*\* 관리자 계정을 생성하고 admin페이지를 따로 제작하였습니다.
 - **이메일 초대** (EmailJS 연동)
   -- \*\* 관리자 계정에서만 초대가 가능하도록 설계하였습니다.
-- **반응형 UI** (Tailwind, styled-components)
+- **반응형 UI** (Tailwind)
 - **상태 관리** (Zustand)
 - **Firebase Hosting 배포**
 
