@@ -9,8 +9,8 @@
 
 ## 주요 기술 스택
 
-- **React**: 리액트 
-- **Vite**:  빌드
+- **React**: 리액트
+- **Vite**: 빌드
 - **Firebase**: 인증, Firestore DB,Realtime DB 호스팅 등
 - **Zustand**: 상태 관리 라이브러리
 - **Styled-components**: CSS-in-JS 스타일링
@@ -88,13 +88,14 @@ src/
 
 ## 주요 화면
 
-### 1. 로그인 페이지
+### 1. 로그인 페이지 및 회원가입 페이지
 
 ![로그인](public/screenshots/login.png)
+![회원가입](public/screenshots/signup.png)
 
-### 2. 대시보드
+### 2. 메인 페이지
 
-![대시보드](public/screenshots/main.png)
+![메인](public/screenshots/main.png)
 
 ### 3. 공지사항 목록
 
@@ -107,6 +108,10 @@ src/
 ### 5. 할 일(Task) 관리
 
 ![할일](public/screenshots/tasks.png)
+
+### 6. 메시지 페이지
+
+![메시지](public/screenshots/messages.png)
 
 ---
 
